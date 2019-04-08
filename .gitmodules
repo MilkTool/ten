@@ -1,6 +1,6 @@
 [submodule "ten-lang"]
 	path = ten-lang
-	url = ./ten-lang
+	url = https://github.com/raystubbs/ten-lang
 [submodule "ten-load"]
 	path = ten-load
-	url = ./ten-load
+	url = https://github.com/raystubbs/ten-load
