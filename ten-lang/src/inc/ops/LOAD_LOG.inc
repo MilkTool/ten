@@ -1,1 +1,0 @@
-*(regs.sp++) = tvLog( opr );

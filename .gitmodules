@@ -1,0 +1,6 @@
+[submodule "ten-lang"]
+	path = ten-lang
+	url = ./ten-lang
+[submodule "ten-load"]
+	path = ten-load
+	url = ./ten-load

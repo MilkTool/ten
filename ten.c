@@ -1,16 +1,20 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
+#include <libgen.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <ten.h>
+#include "ten-load/ten_load.h"
 //#include <line-arg.h>
 
 
-#define MAIN_PROMPT     "$ "
-#define SUB_PROMPT      "? "
-#define RESULT_PREFIX   ": "
+#define MAIN_PROMPT             "$ "
+#define SUB_PROMPT              "? "
+#define RESULT_PREFIX           ": "
+#define DEFAULT_LIBRARY_PATH    "/usr/lib/ten/:/usr/lib64/ten/:/usr/local/lib/ten/:/usr/local/lib64/ten/"
 
 typedef struct {
     ten_Source  base;
@@ -112,7 +116,17 @@ showError( ten_State* ten ) {
 }
 
 static void
-repl( ten_State* ten ) {
+showVersion( void ) {
+
+}
+
+static void
+showHelp( void ) {
+
+}
+
+static void
+runRepl( ten_State* ten ) {
     jmp_buf  jmp;
     jmp_buf* old = ten_swapErrJmp( ten, &jmp );
     int sig = setjmp( jmp );
@@ -130,10 +144,46 @@ repl( ten_State* ten ) {
         ;
 }
 
+static void
+runScript( ten_State* ten, char const* script ) {
+    jmp_buf  jmp;
+    jmp_buf* old = ten_swapErrJmp( ten, &jmp );
+    int sig = setjmp( jmp );
+    if( sig ) {
+        showError( ten );
+        ten_swapErrJmp( ten, old );
+        ten_propError( ten, NULL );
+    }
+    
+    ten_Source* src = ten_pathSource( ten, script );
+    ten_executeScript( ten, src, ten_SCOPE_LOCAL );
+}
 
 
 int
-main( int argc, char const** argv ) {
+main( int argc, char** argv ) {
+    char* script = NULL;
+    if( argc > 2 ) {
+        fprintf( stderr, "Invalid usage pattern, try 'ten --help'\n" );
+        return 1;
+    }
+    
+    if( argc == 2 ) {
+        if( !strcmp( argv[1], "--version" ) || !strcmp( argv[1], "-v" ) ) {
+            showVersion();
+            return 0;
+        }
+        if( !strcmp( argv[1], "--help" ) || !strcmp( argv[1], "-h" ) ) {
+            showHelp();
+            return 0;
+        }
+        if( argv[1][0] == '-' ) {
+            fprintf( stderr, "Invalid usage pattern, try 'ten --help'\n" );
+            return 1;
+        }
+        script = argv[1];
+    }
+    
     ten_Config cfg = { .debug = true };
     ten_State  ten;
     jmp_buf    jmp;
@@ -141,9 +191,26 @@ main( int argc, char const** argv ) {
     
     int sig = setjmp( jmp );
     if( sig )
-        exit( 1 );
+        return 1;
     
-    repl( &ten );
+    char const* plib = getenv( "TEN_LIBRARY_PATH" );
+    if( !plib || plib[0] == '\0' )
+        plib = DEFAULT_LIBRARY_PATH;
+    
+    if( script ) {
+        char* scpy = strdup( script );
+        char* ppro = dirname( script );
+        ten_load( &ten, ppro, plib, "eng" );
+        free( scpy );
+    }
+    else {
+        ten_load( &ten, ".", plib, "eng" );
+    }
+    
+    if( script )
+        runScript( &ten, script );
+    else
+        runRepl( &ten );
     
     ten_finl( &ten );
     return 0;
