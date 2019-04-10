@@ -1,7 +1,9 @@
 **/*.o
 **/*.out
 **/*.so
+**/*.a
 **/build/
 **/vgcore.*
 **/test/test
 ten
+ten-debug

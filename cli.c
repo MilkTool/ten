@@ -117,12 +117,21 @@ showError( ten_State* ten ) {
 
 static void
 showVersion( void ) {
-
+    printf( "Ten 0.1.0\n" );
+    printf( "License MIT\n" );
+    printf( "Copyright (C) 2019 Ray Stubbs\n" );
 }
 
 static void
 showHelp( void ) {
-
+    printf( "ten\n" );
+    printf( "  : launch a REPL\n" );
+    printf( "ten script\n" );
+    printf( "  : run a script file\n" );
+    printf( "ten [-v | --version]\n" );
+    printf( "  : show version and copyright info\n" );
+    printf( "ten [-h | --help]\n" );
+    printf( "  : show this help message\n" );
 }
 
 static void
@@ -185,13 +194,15 @@ main( int argc, char** argv ) {
     }
     
     ten_Config cfg = { .debug = true };
-    ten_State  ten;
+    ten_State* ten = NULL;
     jmp_buf    jmp;
-    ten_init( &ten, &cfg, &jmp );
-    
     int sig = setjmp( jmp );
-    if( sig )
+    if( sig ) {
+        ten_free( ten );
         return 1;
+    }
+    
+    ten = ten_make( &cfg, &jmp );
     
     char const* plib = getenv( "TEN_LIBRARY_PATH" );
     if( !plib || plib[0] == '\0' )
@@ -199,19 +210,19 @@ main( int argc, char** argv ) {
     
     if( script ) {
         char* scpy = strdup( script );
-        char* ppro = dirname( script );
-        ten_load( &ten, ppro, plib, "eng" );
+        char* ppro = dirname( scpy );
+        ten_load( ten, ppro, plib, "eng" );
         free( scpy );
     }
     else {
-        ten_load( &ten, ".", plib, "eng" );
+        ten_load( ten, ".", plib, "eng" );
     }
     
     if( script )
-        runScript( &ten, script );
+        runScript( ten, script );
     else
-        runRepl( &ten );
+        runRepl( ten );
     
-    ten_finl( &ten );
+    ten_free( ten );
     return 0;
 }
