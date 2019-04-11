@@ -16,6 +16,12 @@ To install the Ten CLI just do:
 Or if `make` doesn't link to `gmake` on your system, then use `gmake`
 explicitly instead.
 
+Note that this installs to the `/usr/local/` subpath, so libraries
+will go in `/usr/local/lib` or `/usr/local/lib64` so those need to
+set as library directories (by adding them to LD_LIBRARY_PATH) and
+the CLI executable is put in `/usr/local/bin`, which needs to be
+in your PATH.
+
 ## Usage
 I'll just copy the help menu here:
 
