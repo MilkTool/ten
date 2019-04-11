@@ -5,10 +5,11 @@ is implemented, so for non-GNU toolchains will have to build
 manually.  It's pretty simple, so that shouldn't be much of an
 issue.
 
-## Build and Install
-To build Ten CLI either clone or download this repo, and CD into
-its directory.  Then do:
-
+## Install
+To install the Ten CLI just do:
+    
+    git clone --recursive https://github.com/raystubbs/ten-cli
+    cd ten-cli
     make
     sudo make install
 
