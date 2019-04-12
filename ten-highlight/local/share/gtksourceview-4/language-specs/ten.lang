@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<language id="ten" _name="Ten" version="2.0" _section="Script">
+  <metadata>
+    <property name="mimetypes">text/ten;application/ten;</property>
+    <property name="globs">*.ten;</property>
+  </metadata>
+
+  <styles>
+    <style id="comment"           _name="Comment"                map-to="def:comment"/>
+    <style id="string"            _name="String"                 map-to="def:string"/>
+    <style id="symbol"            _name="Symbol"                 map-to="def:character"/>
+    <style id="keyword"           _name="Keyword"                map-to="def:keyword"/>
+    <style id="ident"             _name="Identifier"             map-to="def:identifier"/>
+    <style id="decimal"           _name="Decimal (float) number" map-to="def:floating-point"/>
+    <style id="integral"          _name="Integral number"        map-to="def:decimal"/>
+    <style id="singletons"        _name="Singleton values"       map-to="def:constant"/>
+    <style id="error"             _name="Error"                  map-to="def:error"/>
+  </styles>
+
+  <definitions>
+    
+    <context id="alt-comment" style-ref="comment">
+      <start>`[|]</start>
+      <end>[|]`</end>
+    </context>
+    
+    <context id="alt-string" style-ref="string">
+      <start>"[|]</start>
+      <end>[|]"</end>
+    </context>
+    
+    <context id="alt-symbol" style-ref="symbol">
+      <start>'[|]</start>
+      <end>[|]'</end>
+    </context>
+
+    <context id="comment" style-ref="comment" end-at-line-end="true">
+      <start extended="true">`(?![|])</start>
+      <end>`</end>
+    </context>
+    
+    <context id="string" style-ref="string" end-at-line-end="true">
+      <start extended="true">"(?![|])</start>
+      <end>"</end>
+    </context>
+    <context id="symbol" style-ref="symbol" end-at-line-end="true">
+      <start extended="true">'(?![|])</start>
+      <end>'</end>
+    </context>
+    
+    <context id="singletons" style-ref="singletons">
+        <keyword>nil</keyword>
+        <keyword>udf</keyword>
+        <keyword>true</keyword>
+        <keyword>false</keyword>
+    </context>
+    
+    <context id="ident" style-ref="ident">
+        <match>
+            [a-zA-Z_][a-zA-Z_0-9]*
+        </match>
+    </context>
+    
+    <context id="extra-decimal-point-error" style-ref="error">
+      <match extended="true">
+        (?&lt;![A-Za-z_])[0-9]\.[0-9]*\.
+      </match>
+    </context>
+    
+    <context id="invalid-digit-error" style-ref="error">
+      <match extended="true">
+        (?&lt;![A-Za-z_])[0-9](\.[0-9]*)?[A-Za-z_]+
+      </match>
+    </context>
+    
+    <context id="decimal" style-ref="decimal">
+      <match extended="true">
+        (?&lt;![A-Za-z_])[0-9]+\.[0-9]*(?!\.)
+      </match>
+    </context>
+
+    <context id="integral" style-ref="integral">
+      <match extended="true">
+        (?&lt;![A-Za-z_])[0-9]+(?!\.)
+      </match>
+    </context>
+
+    <context id="keywords" style-ref="keyword">
+      <keyword>def</keyword>
+      <keyword>set</keyword>
+      <keyword>sig</keyword>
+      <keyword>do</keyword>
+      <keyword>for</keyword>
+      <keyword>if</keyword>
+      <keyword>else</keyword>
+      <keyword>when</keyword>
+      <keyword>in</keyword>
+    </context>
+
+    <!--Main context-->
+    <context id="ten" class="no-spell-check">
+      <include>
+        <context ref="def:shebang"/>
+        <context ref="alt-comment"/>
+        <context ref="alt-string"/>
+        <context ref="alt-symbol"/>
+        <context ref="comment"/>
+        <context ref="string"/>
+        <context ref="symbol"/>
+        <context ref="ident"/>
+        <context ref="extra-decimal-point-error"/>
+        <context ref="invalid-digit-error"/>
+        <context ref="decimal"/>
+        <context ref="integral"/>
+        <context ref="keywords"/>
+        <context ref="singletons"/>
+      </include>
+    </context>
+
+  </definitions>
+</language>

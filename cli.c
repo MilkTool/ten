@@ -77,7 +77,7 @@ prompt( ten_State* ten ) {
     
     LineSource ls = {
         .base = {
-            .name = "<repl>",
+            .name = "<REPL>",
             .next = lsNext,
             .finl = lsFinl
         },
@@ -103,21 +103,26 @@ showError( ten_State* ten ) {
     
     ten_Trace* tIt = ten_getTrace( ten, NULL );
     while( tIt ) {
-        char const* fiber = "???";
-        if( tIt->fiber )
-            fiber = tIt->fiber;
+        char const* unit = "???";
+        if( tIt->unit )
+            unit = tIt->unit;
         char const* file = "???";
         if( tIt->file )
             file = tIt->file;
         
-        fprintf( stderr, "  %s#%u (%s)\n", file, tIt->line, fiber );
+        fprintf(
+            stderr,
+            "  unit: %-10s line: %-4u file: %-20s\n",
+            unit, tIt->line, file
+        );
         tIt = tIt->next;
     }
+    fflush( stderr );
 }
 
 static void
 showVersion( void ) {
-    printf( "Ten 0.1.0\n" );
+    printf( "Ten 0.1.1\n" );
     printf( "License MIT\n" );
     printf( "Copyright (C) 2019 Ray Stubbs\n" );
 }
