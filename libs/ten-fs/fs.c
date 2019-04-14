@@ -1,5 +1,7 @@
 #include <unistd.h>
+#include <stdlib.h>
 #include <limits.h>
+#include <assert.h>
 #include <glob.h>
 #include <string.h>
 #include <errno.h>
@@ -7,7 +9,7 @@
 #include <sys/stat.h>
 #include <ten.h>
 
-#include "ten_export.h"
+#include "ten_field.h"
 
 typedef enum {
     FS_SYM_owner,
@@ -24,11 +26,15 @@ typedef enum {
     FS_SYM_link,
     FS_SYM_reg,
     FS_SYM_sock,
+    FS_SYM_close,
+    
+    FS_IDX_File,
     FS_LAST
 } FsMember;
 
 typedef struct {
     ten_DatInfo* globInfo;
+    ten_DatInfo* fileInfo;
 } FsState;
 
 typedef struct {
@@ -276,11 +282,151 @@ tf_cwd( ten_PARAMS ) {
     return rets;
 }
 
+typedef struct {
+    FILE* file;
+} File;
+
+static void
+fileD( ten_State* ten, void* dat ) {
+    File* f = dat;
+    if( f->file )
+        fclose( f->file );
+}
+
+ten_Tup
+tf_file_close( ten_PARAMS ) {
+    File* f = dat;
+    if( !f->file )
+        ten_panic( ten, ten_str( ten, "File has already been closed" ) );
+    
+    fclose( f->file );
+    f->file = NULL;
+    
+    return ten_pushA( ten, "" );
+}
+
+ten_Tup
+tf_file_read( ten_PARAMS ) {
+    File* f = dat;
+    
+    ten_Var optArg = { .tup = args, .loc = 0 };
+    assert( ten_isRec( ten, &optArg ) );
+    
+    ten_Var* lenArg = ten_udf( ten );
+    ten_recGet( ten, &optArg, ten_int( ten, 0 ), lenArg );
+    
+    if( !f->file )
+        ten_panic( ten, ten_str( ten, "Read from closed file" ) );
+    
+    long long len = -1;
+    if( !ten_isUdf( ten, lenArg ) ) {
+        ten_expect( ten, "len", ten_intType( ten ), lenArg );
+        len = ten_getInt( ten, lenArg );
+        if( len < 0 )
+            ten_panic( ten, ten_str( ten, "Negative 'len' value" ) );
+    }
+    
+    ten_Tup rets = ten_pushA( ten, "U" );
+    ten_Var ret  = { .tup = &rets, .loc = 0 };
+    
+    if( len >= 0 ) {
+        char*  buf = malloc( len );
+        size_t has = fread( buf, 1, len, f->file );
+        if( has > 0 )
+            ten_newStr( ten, buf, has, &ret );
+        free( buf );
+        return rets;
+    }
+    
+    {
+        size_t cap = 1024;
+        size_t len = 0;
+        char*  buf = malloc( cap );
+        
+        size_t has = fread( buf, 1, 1024, f->file );
+        while( has > 0 ) {
+            len += has;
+            if( len + 1024 >= cap ) {
+                cap *= 2;
+                buf  = realloc( buf, cap );
+            }
+            has = fread( &buf[len], 1, 1024, f->file );
+        }
+        if( len > 0 )
+            ten_newStr( ten, buf, len, &ret );
+        free( buf );
+        return rets;
+    }
+}
+
+ten_Tup
+tf_file_write( ten_PARAMS ) {
+    File* f = dat;
+    
+    ten_Var dataArg = { .tup = args, .loc = 0 };
+    ten_expect( ten, "data", ten_strType( ten ), &dataArg );
+    
+    if( !f->file )
+        ten_panic( ten, ten_str( ten, "Write to closed file" ) );
+    
+    size_t      len  = ten_getStrLen( ten, &dataArg );
+    char const* data = ten_getStrBuf( ten, &dataArg );
+    
+    size_t has = fwrite( data, 1, len, f->file );
+    
+    return ten_pushA( ten, "L", has == len );
+}
+
+ten_Tup
+tf_open( ten_PARAMS ) {
+    FsState* fs = dat;
+    
+    ten_Var pathArg = { .tup = args, .loc = 0 };
+    ten_Var modeArg = { .tup = args, .loc = 1 };
+    
+    ten_expect( ten, "path", ten_strType( ten ), &pathArg );
+    ten_expect( ten, "mode", ten_strType( ten ), &modeArg );
+    
+    char const* path = ten_getStrBuf( ten, &pathArg );
+    char const* mode = ten_getStrBuf( ten, &modeArg );
+    
+    ten_Var closeMem = { .tup = mems, .loc = FS_SYM_close };
+    ten_Var readMem  = { .tup = mems, .loc = FS_SYM_read };
+    ten_Var writeMem = { .tup = mems, .loc = FS_SYM_write };
+    ten_Var idxMem   = { .tup = mems, .loc = FS_IDX_File };
+    
+
+    ten_Tup rets     = ten_pushA( ten, "UU" );
+    ten_Var fileRet  = { .tup = &rets, .loc = 0 };
+    ten_Var errRet   = { .tup = &rets, .loc = 1 };
+    
+    ten_Tup vars   = ten_pushA( ten, "U" );
+    ten_Var datVar = { .tup = &vars, .loc = 0 };
+    
+    File* f = ten_newDat( ten, fs->fileInfo, &datVar );
+    f->file = fopen( path, mode );
+    if( !f->file ) {
+        char const* err = strerror( errno );
+        size_t      len = strlen( err );
+        ten_newStr( ten, err, len, &errRet );
+        return rets;
+    }
+    
+    ten_newRec( ten, &idxMem, &fileRet );
+    
+    ten_field_fun( &fileRet, file_close, &closeMem, &datVar, NULL );
+    ten_field_fun( &fileRet, file_read, &readMem, &datVar, "opt...", NULL );
+    ten_field_fun( &fileRet, file_write, &writeMem, &datVar, "data", NULL );
+    
+    return rets;
+}
+
 void
 ten_export( ten_State* ten, ten_Var* export ) {
     
-    ten_Tup vars = ten_pushA( ten, "U" );
+    ten_Tup vars = ten_pushA( ten, "UU" );
     ten_Var datVar = { .tup = &vars, .loc = 0 };
+    ten_Var idxVar = { .tup = &vars, .loc = 1 };
     
     ten_DatInfo* fsInfo = ten_addDatInfo(
         ten,
@@ -307,7 +453,12 @@ ten_export( ten_State* ten, ten_Var* export ) {
     ten_setMember( ten, &datVar, FS_SYM_link, ten_sym( ten, "link" ) );
     ten_setMember( ten, &datVar, FS_SYM_reg, ten_sym( ten, "reg" ) );
     ten_setMember( ten, &datVar, FS_SYM_sock, ten_sym( ten, "sock" ) );
+    ten_setMember( ten, &datVar, FS_SYM_close, ten_sym( ten, "close" ) );
+    ten_setMember( ten, &datVar, FS_SYM_read, ten_sym( ten, "read" ) );
+    ten_setMember( ten, &datVar, FS_SYM_write, ten_sym( ten, "write" ) );
     
+    ten_newIdx( ten, &idxVar );
+    ten_setMember( ten, &datVar, FS_IDX_File, &idxVar );
     
     fs->globInfo = ten_addDatInfo(
         ten,
@@ -318,14 +469,22 @@ ten_export( ten_State* ten, ten_Var* export ) {
             .destr = globD
         }
     );
+    fs->fileInfo = ten_addDatInfo(
+        ten,
+        &(ten_DatConfig){
+            .tag   = "File",
+            .size  = sizeof(File),
+            .mems  = 0,
+            .destr = fileD
+        }
+    );
     
     
-    
-    ten_export_fun( glob, &datVar, "path", NULL );
-    ten_export_fun( can, &datVar, "whom", "what", "path", NULL );
-    ten_export_fun( type, &datVar, "path", NULL );
-    ten_export_fun( size, &datVar, "size", NULL );
-    ten_export_fun( cwd, &datVar, NULL );
-    
+    ten_field_fun( export, glob, NULL, &datVar, "path", NULL );
+    ten_field_fun( export, can, NULL, &datVar, "whom", "what", "path", NULL );
+    ten_field_fun( export, type, NULL, &datVar, "path", NULL );
+    ten_field_fun( export, size, NULL, &datVar, "size", NULL );
+    ten_field_fun( export, cwd, NULL, &datVar, NULL );
+    ten_field_fun( export, open, NULL, &datVar, "path", "mode", NULL );
     ten_pop( ten );
 }
