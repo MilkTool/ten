@@ -27,7 +27,9 @@ typedef enum {
     FS_SYM_reg,
     FS_SYM_sock,
     FS_SYM_close,
-    
+    FS_SYM_tell,
+    FS_SYM_goto,
+    FS_SYM_jump,
     FS_IDX_File,
     FS_LAST
 } FsMember;
@@ -378,6 +380,63 @@ tf_file_write( ten_PARAMS ) {
 }
 
 ten_Tup
+tf_file_tell( ten_PARAMS ) {
+    File* f = dat;
+    
+    if( !f->file )
+        ten_panic( ten, ten_str( ten, "Use of closed file" ) );
+    
+    ten_Tup rets = ten_pushA( ten, "U" );
+    ten_Var ret  = { .tup = &rets, .loc = 0 };
+    
+    long loc = ftell( f->file );
+    if( loc < 0 )
+        return rets;
+    
+    ten_setDec( ten, (double)loc, &ret );
+    return rets;
+}
+
+ten_Tup
+tf_file_goto( ten_PARAMS ) {
+    File* f = dat;
+    
+    ten_Var locArg = { .tup = args, .loc = 0 };
+    ten_expect( ten, "loc", ten_decType( ten ), &locArg );
+    
+    if( !f->file )
+        ten_panic( ten, ten_str( ten, "Use of closed file" ) );
+    
+    double dec = ten_getDec( ten, &locArg );
+    
+    long offset = (long)dec;
+    int  whence = dec < 0.0 ? SEEK_END : SEEK_SET;
+    
+    if( fseek( f->file, offset, whence ) < 0 )
+        return ten_pushA( ten, "L", false );
+    else
+        return ten_pushA( ten, "L", true );
+}
+
+ten_Tup
+tf_file_jump( ten_PARAMS ) {
+    File* f = dat;
+    
+    ten_Var offArg = { .tup = args, .loc = 0 };
+    ten_expect( ten, "off", ten_decType( ten ), &offArg );
+    
+    if( !f->file )
+        ten_panic( ten, ten_str( ten, "Use of closed file" ) );
+    
+    double dec = ten_getDec( ten, &offArg );
+    
+    if( fseek( f->file, (long)dec, SEEK_CUR ) < 0 )
+        return ten_pushA( ten, "L", false );
+    else
+        return ten_pushA( ten, "L", true );
+}
+
+ten_Tup
 tf_open( ten_PARAMS ) {
     FsState* fs = dat;
     
@@ -393,6 +452,9 @@ tf_open( ten_PARAMS ) {
     ten_Var closeMem = { .tup = mems, .loc = FS_SYM_close };
     ten_Var readMem  = { .tup = mems, .loc = FS_SYM_read };
     ten_Var writeMem = { .tup = mems, .loc = FS_SYM_write };
+    ten_Var tellMem  = { .tup = mems, .loc = FS_SYM_tell };
+    ten_Var gotoMem  = { .tup = mems, .loc = FS_SYM_goto };
+    ten_Var jumpMem  = { .tup = mems, .loc = FS_SYM_jump };
     ten_Var idxMem   = { .tup = mems, .loc = FS_IDX_File };
     
 
@@ -417,6 +479,9 @@ tf_open( ten_PARAMS ) {
     ten_field_fun( &fileRet, file_close, &closeMem, &datVar, NULL );
     ten_field_fun( &fileRet, file_read, &readMem, &datVar, "opt...", NULL );
     ten_field_fun( &fileRet, file_write, &writeMem, &datVar, "data", NULL );
+    ten_field_fun( &fileRet, file_tell, &tellMem, &datVar, NULL );
+    ten_field_fun( &fileRet, file_goto, &gotoMem, &datVar, "loc", NULL );
+    ten_field_fun( &fileRet, file_jump, &jumpMem, &datVar, "off", NULL );
     
     return rets;
 }
@@ -454,8 +519,9 @@ ten_export( ten_State* ten, ten_Var* export ) {
     ten_setMember( ten, &datVar, FS_SYM_reg, ten_sym( ten, "reg" ) );
     ten_setMember( ten, &datVar, FS_SYM_sock, ten_sym( ten, "sock" ) );
     ten_setMember( ten, &datVar, FS_SYM_close, ten_sym( ten, "close" ) );
-    ten_setMember( ten, &datVar, FS_SYM_read, ten_sym( ten, "read" ) );
-    ten_setMember( ten, &datVar, FS_SYM_write, ten_sym( ten, "write" ) );
+    ten_setMember( ten, &datVar, FS_SYM_tell, ten_sym( ten, "tell" ) );
+    ten_setMember( ten, &datVar, FS_SYM_goto, ten_sym( ten, "goto" ) );
+    ten_setMember( ten, &datVar, FS_SYM_jump, ten_sym( ten, "jump" ) );
     
     ten_newIdx( ten, &idxVar );
     ten_setMember( ten, &datVar, FS_IDX_File, &idxVar );
