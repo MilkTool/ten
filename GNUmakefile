@@ -17,20 +17,15 @@ else
     endif
 endif
 
-ten$(POSTFIX): cli.c ten-load/ten_load.h ten-load/ten_load.c ten-lang/libten.so
+ten$(POSTFIX): cli.c ten-load/ten_load.h ten-load/ten_load.c
 	$(CC) $(CCFLAGS) $(IDIRS) $(LDIRS) ten-load/ten_load.c cli.c -o ten$(POSTFIX)
-
-ten-lang/libten.so: ten-lang/
-	PROFILE=$(PROFILE) $(MAKE) -C ten-lang/
 
 .PHONY: install
 install:
-	PREFIX=$(PREFIX) PROFILE=$(PROFILE) $(MAKE) -C ten-lang/ install
 	mkdir  -p $(BINDIR)
 	cp ten$(POSTFIX) $(BINDIR)
 
 .PHONY: clean
 clean:
-	- PROFILE=$(PROFILE) $(MAKE) -C ten-lang/ clean
 	- rm ten ten$(POSTFIX)
 	- rm ten-load/*.o

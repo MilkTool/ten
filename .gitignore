@@ -7,3 +7,6 @@
 **/test/test
 ten
 ten-debug
+release/*.tgz
+release/*.tar
+release/*.gz
