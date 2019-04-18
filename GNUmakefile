@@ -1,24 +1,26 @@
-IDIRS   := -I ten-lang/src/
-LDIRS   := -L ten-lang/
-CCFLAGS := -Wall -lreadline -ldl
+CCFLAGS := -Wall
 PROFILE ?= release
 PREFIX  ?= /usr/local/
 BINDIR  ?= $(PREFIX)/bin
 
+LIBS    ?= -l readline -l dl -l m
+
 ifeq ($(PROFILE),release)
-    CCFLAGS += -O2 -D NDEBUG -l ten
+    CCFLAGS += -O2 -D NDEBUG
+    LIBS    += -l ten -l tml
     POSTFIX := 
 else
     ifeq ($(PROFILE),debug)
-        CCFLAGS += -g -O0 -l ten-debug
+        CCFLAGS += -g -O0
+        LIBS    += -l ten-debug -l tml-debug
         POSTFIX := -debug
     else
         $(error "Invalid build profile")
     endif
 endif
 
-ten$(POSTFIX): cli.c ten-load/ten_load.h ten-load/ten_load.c
-	$(CC) $(CCFLAGS) $(IDIRS) $(LDIRS) ten-load/ten_load.c cli.c -o ten$(POSTFIX)
+ten$(POSTFIX): ten.c
+	$(CC) $(CCFLAGS) $(IDIRS) $(LDIRS) ten.c $(LIBS) -o ten$(POSTFIX)
 
 .PHONY: install
 install:
@@ -27,5 +29,5 @@ install:
 
 .PHONY: clean
 clean:
-	- rm ten ten$(POSTFIX)
-	- rm ten-load/*.o
+	- rm ten$(POSTFIX)
+

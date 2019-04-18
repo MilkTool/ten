@@ -7,7 +7,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <ten.h>
-#include "ten-load/ten_load.h"
+#include <tml.h>
 //#include <line-arg.h>
 
 
@@ -216,11 +216,11 @@ main( int argc, char** argv ) {
     if( script ) {
         char* scpy = strdup( script );
         char* ppro = dirname( scpy );
-        ten_load( ten, ppro, plib, "eng" );
+        tml_install( ten, ppro, plib, "eng" );
         free( scpy );
     }
     else {
-        ten_load( ten, ".", plib, "eng" );
+        tml_install( ten, ".", plib, "eng" );
     }
     
     if( script )

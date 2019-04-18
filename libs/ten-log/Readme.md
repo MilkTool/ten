@@ -1,2 +1,0 @@
-# TODO
-Ten logging library.
