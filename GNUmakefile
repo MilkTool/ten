@@ -17,7 +17,7 @@ else
     endif
 endif
 
-LIBS += -l readline -l dl -l m -l tml
+LIBS +=  -l tml -l readline -l dl -l m
 
 ten$(POSTFIX): ten.c
 	$(CC) $(CCFLAGS) $(IDIRS) $(LDIRS) ten.c $(LIBS) -o ten$(POSTFIX)
