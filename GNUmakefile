@@ -3,7 +3,7 @@ PROFILE ?= release
 PREFIX  ?= /usr/local/
 BINDIR  ?= $(PREFIX)/bin
 
-LIBS    ?= -l readline -l dl -l m
+LIBS    ?= -l readline -l dl -l m -l tml
 
 ifeq ($(PROFILE),release)
     CCFLAGS += -O2 -D NDEBUG
@@ -12,7 +12,7 @@ ifeq ($(PROFILE),release)
 else
     ifeq ($(PROFILE),debug)
         CCFLAGS += -g -O0
-        LIBS    += -l ten-debug -l tml-debug
+        LIBS    += -l ten-debug
         POSTFIX := -debug
     else
         $(error "Invalid build profile")
