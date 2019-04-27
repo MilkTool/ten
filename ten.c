@@ -90,6 +90,7 @@ prompt( ten_State* ten ) {
     fputs( RESULT_PREFIX, stdout );
     fputs( ten_string( ten, &r ), stdout );
     fputc( '\n', stdout );
+    ten_pop( ten );
     return true;
 }
 
@@ -198,7 +199,6 @@ main( int argc, char** argv ) {
         script = argv[1];
     }
     
-    ten_Config cfg = { .debug = true };
     ten_State* ten = NULL;
     jmp_buf    jmp;
     int sig = setjmp( jmp );
@@ -207,7 +207,7 @@ main( int argc, char** argv ) {
         return 1;
     }
     
-    ten = ten_make( &cfg, &jmp );
+    ten = ten_make( NULL, &jmp );
     
     char const* plib = getenv( "TEN_LIBRARY_PATH" );
     if( !plib || plib[0] == '\0' )
