@@ -16,11 +16,19 @@
 #define RESULT_PREFIX           ": "
 #define DEFAULT_LIBRARY_PATH    "/usr/lib/ten/:/usr/lib64/ten/:/usr/local/lib/ten/:/usr/local/lib64/ten/"
 
+
+typedef enum {
+    LS_MPROMPT,
+    LS_SPROMPT,
+    LS_NEXT,
+    LS_EOL
+} LsState;
+
 typedef struct {
     ten_Source  base;
+    LsState     state;
     char*       line;
     size_t      next;
-    unsigned    npad;
 } LineSource;
 
 static void
@@ -38,52 +46,52 @@ lsFinl( ten_Source* src ) {
 static int
 lsNext( ten_Source* src ) {
     LineSource* ls = (LineSource*)src;
-    if( ls->line != NULL && ls->line[ls->next] != '\0' )
-        return ls->line[ls->next++];
-    
-    if( ls->line == NULL )
-        return -1;
-    
-    
-    if( ls->line[ls->next] == '\0' ) {
-        if( ls->npad > 0 ) {
-            ls->npad--;
-            return '\n';
-        }
-        
-        free( ls->line );
-        ls->line = readline( SUB_PROMPT );
-        ls->next = 0;
-        ls->npad = 3;
-        
-        if( ls->line == NULL ) {
-            return -1;
-        }
-        else {
+    switch( ls->state ) {
+        case LS_MPROMPT:
+            ls->line = readline( MAIN_PROMPT );
+            if( !ls->line )
+                return ten_EOF;
             add_history( ls->line );
-            return ls->line[ls->next++];
-        }
+            ls->state = LS_NEXT;
+            ls->next  = 0;
+            return lsNext( src );
+        break;
+        case LS_SPROMPT:
+            free( ls->line );
+            ls->line = readline( SUB_PROMPT );
+            if( !ls->line )
+                return ten_EOF;
+            add_history( ls->line );
+            ls->state = LS_NEXT;
+            ls->next  = 0;
+            return lsNext( src );
+        break;
+        case LS_NEXT:
+            if( ls->line[ls->next] == '\0' ) {
+                ls->state = LS_EOL;
+                return '\n';
+            }
+            else {
+                return ls->line[ls->next++];
+            }
+        break;
+        case LS_EOL:
+            ls->state = LS_SPROMPT;
+            return ten_PAD;
+        break;
     }
-    return -1;
+    
+    return ten_EOF;
 }
 
 static bool
 prompt( ten_State* ten ) {
-    char* line = readline( MAIN_PROMPT );
-    if( line == NULL )
-        return false;
-    
-    add_history( line );
-    
     LineSource ls = {
         .base = {
             .name = "<REPL>",
             .next = lsNext,
             .finl = lsFinl
-        },
-        .line = line,
-        .npad = 3,
-        .next = 0
+        }
     };
     
     ten_Tup r = ten_executeExpr( ten, (ten_Source*)&ls, ten_SCOPE_GLOBAL );
