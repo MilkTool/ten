@@ -152,8 +152,7 @@ static void
 runRepl( ten_State* ten ) {
     jmp_buf  jmp;
     jmp_buf* old = ten_swapErrJmp( ten, &jmp );
-    int sig = setjmp( jmp );
-    if( sig ) {
+    if( setjmp( jmp ) ) {
         showError( ten );
         if( ten_getErrNum( ten, NULL ) == ten_ERR_FATAL ) {
             ten_swapErrJmp( ten, old );
@@ -171,8 +170,7 @@ static void
 runScript( ten_State* ten, char const* script ) {
     jmp_buf  jmp;
     jmp_buf* old = ten_swapErrJmp( ten, &jmp );
-    int sig = setjmp( jmp );
-    if( sig ) {
+    if( setjmp( jmp ) ) {
         showError( ten );
         ten_swapErrJmp( ten, old );
         ten_propError( ten, NULL );
@@ -209,8 +207,7 @@ main( int argc, char** argv ) {
     
     ten_State* ten = NULL;
     jmp_buf    jmp;
-    int sig = setjmp( jmp );
-    if( sig ) {
+    if( setjmp( jmp ) ) {
         ten_free( ten );
         return 1;
     }
