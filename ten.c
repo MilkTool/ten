@@ -205,14 +205,14 @@ main( int argc, char** argv ) {
         script = argv[1];
     }
     
-    ten_State* ten = NULL;
-    jmp_buf    jmp;
+    ten_State volatile* vol = NULL;
+    jmp_buf             jmp;
     if( setjmp( jmp ) ) {
+        ten_State* ten = (ten_State*)vol;
         ten_free( ten );
         return 1;
     }
-    
-    ten = ten_make( NULL, &jmp );
+    ten_State* ten = (ten_State*)(vol = ten_make( NULL, &jmp ));
     
     char const* plib = getenv( "TEN_LIBRARY_PATH" );
     if( !plib || plib[0] == '\0' )
