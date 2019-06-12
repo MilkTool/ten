@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <libgen.h>
+#include <signal.h>
+#include <setjmp.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -180,6 +182,13 @@ runScript( ten_State* ten, char const* script ) {
     ten_executeScript( ten, src, ten_SCOPE_LOCAL );
 }
 
+sigjmp_buf* sjmp = NULL;
+
+static void
+onSignal( int sig ) {
+    if( sjmp )
+        siglongjmp( *sjmp, 1 );
+}
 
 int
 main( int argc, char** argv ) {
@@ -227,11 +236,22 @@ main( int argc, char** argv ) {
         tml_install( ten, ".", plib, "eng" );
     }
     
+    sigjmp_buf qjmp;
+    if( sigsetjmp(qjmp, 1) )
+        goto end;
+    
+    sjmp = &qjmp;
+    signal( SIGABRT, onSignal );
+    signal( SIGINT, onSignal );
+    signal( SIGHUP, onSignal );
+    signal( SIGQUIT, onSignal );
+    
     if( script )
         runScript( ten, script );
     else
         runRepl( ten );
-    
+
+end:
     ten_free( ten );
     return 0;
 }
