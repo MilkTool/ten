@@ -133,7 +133,7 @@ showError( ten_State* ten ) {
 
 static void
 showVersion( void ) {
-    printf( "Ten 0.5.0\n" );
+    printf( "Ten 0.6.0\n" );
     printf( "License MIT\n" );
     printf( "Copyright (C) 2019 Ray Stubbs\n" );
 }
